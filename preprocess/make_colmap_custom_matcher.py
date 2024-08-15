@@ -83,20 +83,20 @@ if __name__ == '__main__':
     loop_rel_matches = np.concatenate([-loop_rel_matches[::-1], np.array([0]), loop_rel_matches])
 
     image_files_organised = find_images_names(args.image_path)
-
-    cam_folder_list = []
+    multiple_cam = True
     if(len(image_files_organised) > 1):
         cam_folder_list = os.listdir(f"{args.image_path}")
-
+    else:
+        cam_folder_list = [args.image_path]
+        multiple_cam = False
 
     matches_str = []
-    def add_match(cam_id, matched_cam_id, current_image_file, matched_frame_id):
+    def add_match(cam_id, matched_cam_id, current_image_file, matched_frame_id, multiple_cam = True):
         # REMOVE AFTER
         # if (cam_folder_list[cam_id + matched_cam_id] == "backleft") and (not cam_folder_list[cam_id] == "backleft") and (matched_frame_id >= 785):
         #     matched_frame_id -= 647
         # if (not cam_folder_list[cam_id + matched_cam_id] == "backleft") and (cam_folder_list[cam_id] == "backleft") and (matched_frame_id >= 785):
         #     matched_frame_id += 647
-
         if matched_frame_id < len(matched_cam['images']):
             matched_image_file = matched_cam['images'][matched_frame_id]
             matches_str.append(f"{cam_folder_list[cam_id]}/{current_image_file} {cam_folder_list[cam_id + matched_cam_id]}/{matched_image_file}\n")
@@ -107,12 +107,12 @@ if __name__ == '__main__':
             for current_image_id, current_image_file in enumerate(current_cam['images']):
                 for frame_step in range(args.n_seq_matches_per_view):
                     matched_frame_id = current_image_id + frame_step
-                    add_match(cam_id, matched_cam_id, current_image_file, matched_frame_id)
+                    add_match(cam_id, matched_cam_id, current_image_file, matched_frame_id, multiple_cam=multiple_cam)
 
                 for match_id in range(args.n_quad_matches_per_view):
                     frame_step = args.n_seq_matches_per_view + int(2**match_id) - 1
                     matched_frame_id = current_image_id + frame_step
-                    add_match(cam_id, matched_cam_id, current_image_file, matched_frame_id)
+                    add_match(cam_id, matched_cam_id, current_image_file, matched_frame_id, multiple_cam=multiple_cam)
 
             ## Loop closure
             for loop_match in loop_matches:
@@ -122,7 +122,7 @@ if __name__ == '__main__':
                         current_image_file = current_cam['images'][current_image_id]
                         for matched_loop_rel_match in loop_rel_matches:
                             matched_frame_id = (loop_match[1] + matched_loop_rel_match)
-                            add_match(cam_id, matched_cam_id, current_image_file, matched_frame_id)
+                            add_match(cam_id, matched_cam_id, current_image_file, matched_frame_id, multiple_cam=multiple_cam)
 
 
     ## Add GPS matches

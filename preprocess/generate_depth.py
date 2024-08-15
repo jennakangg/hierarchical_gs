@@ -67,9 +67,12 @@ if __name__ == '__main__':
     print(f"generating depth_params.json for chunks {os.listdir(args.chunks_dir)}.")
     try:
         subprocess.run([
-            "python", "preprocess/make_chunks_depth_scale.py", "--chunks_dir", f"{args.chunks_dir}", "--depths_dir", f"{os.path.join(args.project_dir, "camera_calibration/rectified", "depths")}"],
+            "python", "preprocess/make_chunks_depth_scale.py", 
+            "--chunks_dir", f"{args.chunks_dir}", 
+            "--depths_dir", os.path.join(args.project_dir, "camera_calibration", "rectified", "depths")
+            ],
             check=True
-        )
+    )
     except subprocess.CalledProcessError as e:
         print(f"Error executing run_monodepth: {e}")
         sys.exit(1)

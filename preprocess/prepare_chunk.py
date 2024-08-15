@@ -185,6 +185,7 @@ if __name__ == '__main__':
     ## Correct slight shifts that might have happened during bundle adjustments
     try:
         subprocess.run(transform_colmap_args, check=True)
+        print("Lol")
     except subprocess.CalledProcessError as e:
         print(f"Error executing transform_colmap_args: {e}")
         sys.exit(1)

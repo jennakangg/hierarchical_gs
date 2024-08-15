@@ -1,0 +1,2 @@
+
+python render_hierarchy.py -s db/playroom/camera_calibration/chunks/0_0 --model_path db/playroom/output --hierarchy db/playroom/output/trained_chunks/0_0/hierarchy.hier_opt --out_dir db/playroom/render_output

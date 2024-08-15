@@ -68,6 +68,8 @@ if __name__ == '__main__':
 
     ## First create raw_chunks, each chunk has its own colmap.
     print(f"chunking colmap from {colmap_dir} to {args.chunks_dir}/raw_chunks")
+
+
     make_chunk_args = [
             "python", f"preprocess/make_chunk.py",
             "--base_dir", os.path.join(colmap_dir, "sparse", "0"),

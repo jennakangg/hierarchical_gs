@@ -79,6 +79,7 @@ if __name__ == '__main__':
         "--database_path", f"{args.project_dir}/camera_calibration/unrectified/database.db",
         "--image_path", f"{args.images_dir}",
         "--ImageReader.single_camera_per_folder", "1",
+        # "--ImageReader.single_camera", "1",  # Set to single camera mode
         "--ImageReader.default_focal_length_factor", "0.5",
         "--ImageReader.camera_model", "OPENCV",
         ]
@@ -89,42 +90,58 @@ if __name__ == '__main__':
         print(f"Error executing colmap feature_extractor: {e}")
         sys.exit(1)
 
-    print("making custom matches...")
-    make_colmap_custom_matcher_args = [
-        "python", f"preprocess/make_colmap_custom_matcher.py",
-        "--image_path", f"{args.images_dir}",
-        "--output_path", f"{args.project_dir}/camera_calibration/unrectified/matching.txt"
+    # print("making custom matches...")
+    # make_colmap_custom_matcher_args = [
+    #     "python", f"preprocess/make_colmap_custom_matcher.py",
+    #     "--image_path", f"{args.images_dir}",
+    #     "--output_path", f"{args.project_dir}/camera_calibration/unrectified/matching.txt"
+    # ]
+    # try:
+    #     subprocess.run(make_colmap_custom_matcher_args, check=True)
+    # except subprocess.CalledProcessError as e:
+    #     print(f"Error executing make_colmap_custom_matcher: {e}")
+    #     sys.exit(1)
+
+    print("Running Exhaustive Matcher...")
+    # Run exhaustive for smaller scenes
+    colmap_exhaustive_matcher_args = [
+        colmap_exe, "exhaustive_matcher",
+        "--database_path", f"{args.project_dir}/camera_calibration/unrectified/database.db",
     ]
     try:
-        subprocess.run(make_colmap_custom_matcher_args, check=True)
-    except subprocess.CalledProcessError as e:
-        print(f"Error executing make_colmap_custom_matcher: {e}")
-        sys.exit(1)
-
-    ## Feature matching
-    print("matching features...")
-    colmap_matches_importer_args = [
-        colmap_exe, "matches_importer",
-        "--database_path", f"{args.project_dir}/camera_calibration/unrectified/database.db",
-        "--match_list_path", f"{args.project_dir}/camera_calibration/unrectified/matching.txt"
-        ]
-    try:
-        subprocess.run(colmap_matches_importer_args, check=True)
+        subprocess.run(colmap_exhaustive_matcher_args, check=True)
     except subprocess.CalledProcessError as e:
         print(f"Error executing colmap matches_importer: {e}")
         sys.exit(1)
 
-    ## Generate sfm pointcloud
+    ## Feature matching
+    # print("matching features...")
+    # colmap_matches_importer_args = [
+    #     colmap_exe, "matches_importer",
+    #     "--database_path", f"{args.project_dir}/camera_calibration/unrectified/database.db",
+    #     "--match_list_path", f"{args.project_dir}/camera_calibration/unrectified/matching.txt"
+    #     ]
+    # try:
+    #     subprocess.run(colmap_matches_importer_args, check=True)
+    # except subprocess.CalledProcessError as e:
+    #     print(f"Error executing colmap matches_importer: {e}")
+    #     sys.exit(1)
+
+    # Generate sfm pointcloud with general mapper instead of hierarchy
     print("generating sfm point cloud...")
-    colmap_hierarchical_mapper_args = [
-        colmap_exe, "hierarchical_mapper",
-        "--database_path", f"{args.project_dir}/camera_calibration/unrectified/database.db",
-        "--image_path", f"{args.images_dir}",
-        "--output_path", f"{args.project_dir}/camera_calibration/unrectified/sparse",
-        "--Mapper.ba_global_function_tolerance", "0.000001" 
-        ]
+    colmap_mapper_args = [
+    colmap_exe, "mapper",
+    "--database_path", f"{args.project_dir}/camera_calibration/unrectified/database.db",
+    "--image_path", f"{args.images_dir}",
+    "--output_path", f"{args.project_dir}/camera_calibration/unrectified/sparse",
+    # "--Mapper.ba_global_function_tolerance", "0.000001",  # Keep for high precision in bundle adjustment
+
+    # "--Mapper.ba_local_max_num_iterations", "100",  # Adjusted number of local BA iterations
+    # "--Mapper.init_min_num_inliers", "30",  # Minimum number of inliers for initialization
+]
+
     try:
-        subprocess.run(colmap_hierarchical_mapper_args, check=True)
+        subprocess.run(colmap_mapper_args, check=True)
     except subprocess.CalledProcessError as e:
         print(f"Error executing colmap hierarchical_mapper: {e}")
         sys.exit(1)
