@@ -134,7 +134,7 @@ if __name__ == '__main__':
     "--database_path", f"{args.project_dir}/camera_calibration/unrectified/database.db",
     "--image_path", f"{args.images_dir}",
     "--output_path", f"{args.project_dir}/camera_calibration/unrectified/sparse",
-    # "--Mapper.ba_global_function_tolerance", "0.000001",  # Keep for high precision in bundle adjustment
+    "--Mapper.ba_global_function_tolerance", "0.000001",  # Keep for high precision in bundle adjustment
 
     # "--Mapper.ba_local_max_num_iterations", "100",  # Adjusted number of local BA iterations
     # "--Mapper.init_min_num_inliers", "30",  # Minimum number of inliers for initialization
@@ -146,16 +146,16 @@ if __name__ == '__main__':
         print(f"Error executing colmap hierarchical_mapper: {e}")
         sys.exit(1)
 
-    ## Simplify images so that everything takes less time (reading colmap usually takes forever)
-    simplify_images_args = [
-        "python", f"preprocess/simplify_images.py",
-        "--base_dir", f"{args.project_dir}/camera_calibration/unrectified/sparse/0"
-    ]
-    try:
-        subprocess.run(simplify_images_args, check=True)
-    except subprocess.CalledProcessError as e:
-        print(f"Error executing simplify_images: {e}")
-        sys.exit(1)
+    # ## Simplify images so that everything takes less time (reading colmap usually takes forever)
+    # simplify_images_args = [
+    #     "python", f"preprocess/simplify_images.py",
+    #     "--base_dir", f"{args.project_dir}/camera_calibration/unrectified/sparse/0"
+    # ]
+    # try:
+    #     subprocess.run(simplify_images_args, check=True)
+    # except subprocess.CalledProcessError as e:
+    #     print(f"Error executing simplify_images: {e}")
+    #     sys.exit(1)
 
     ## Undistort images
     print(f"undistorting images from {args.images_dir} to {args.project_dir}/camera_calibration/rectified images...")

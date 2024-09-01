@@ -16,6 +16,8 @@ from scene.gaussian_model import GaussianModel
 from utils.sh_utils import eval_sh
 from diff_gaussian_rasterization import _C
 import numpy as np
+import os
+import pickle
 
 def render(
         viewpoint_camera, pc : GaussianModel, pipe, bg_color : torch.Tensor, scaling_modifier = 1.0, override_color = None, indices = None, use_trained_exp=False):
@@ -147,7 +149,9 @@ def render_post(
         interpolation_weights = torch.Tensor([]).float(),
         num_node_kids = torch.Tensor([]).int(),
         interp_python = True,
-        use_trained_exp = False):
+        use_trained_exp = False,
+        view_num = 0
+        ):
     """
     Render the scene from a hierarchy.  
     
@@ -166,6 +170,33 @@ def render_post(
     tanfovy = math.tan(viewpoint_camera.FoVy * 0.5)
 
     means3D = pc.get_xyz
+# Ensure the tensor is detached and moved to CPU
+    points_cpu = means3D.detach().cpu().numpy()
+
+    # Prepare camera parameters for saving (detaching and moving to CPU if they are tensors
+    # Filepath for the pickle file
+    filepath = 'points_dict.pkl'
+    
+    # Load existing dictionary if it exists, otherwise create new
+    if os.path.exists(filepath):
+        with open(filepath, 'rb') as file:
+            points_dict = pickle.load(file)
+    else:
+        points_dict = {}
+    
+    # Add or update the points and camera parameters for the specified view number
+    points_dict[viewpoint_camera.image_name] = {
+        'points': points_cpu,
+        'height': viewpoint_camera.image_height,
+        'width': viewpoint_camera.image_width,
+        'full_proj_transform': viewpoint_camera.full_proj_transform.detach().cpu().numpy()
+    }
+    
+    # Save the updated dictionary to the file
+    with open(filepath, 'wb') as file:
+        pickle.dump(points_dict, file)
+    
+
     means2D = screenspace_points
     opacity = pc.get_opacity
 
@@ -337,8 +368,15 @@ def render_coarse(viewpoint_camera, pc : GaussianModel, pipe, bg_color : torch.T
     )
 
     rasterizer = GaussianRasterizer(raster_settings=raster_settings)
-
+    
     means3D = pc.get_xyz
+
+    import pickle
+
+    # Saving the points to a pickle file
+    with open('points.pkl', 'wb') as file:
+        pickle.dump(means3D, file)
+
     means2D = screenspace_points
     opacity = pc.get_opacity
 
