@@ -1,5 +1,4 @@
 from lod_pairs_fvvdp import LODPairsFvvdp
-from lod_fvvdp_eccentricity import LODFvvdpEccentricity
 from lod_fvvdp_continous import LODFvvdpEccentricityContinous
 import numpy as np
 import torch
@@ -35,7 +34,6 @@ def extract_heatmap_patch(map, x, y, patch_size=64):
     return map[top:bottom, left:right]
 
 def parse_tensor_string(tensor_str):
-    # This function parses the numerical part of the tensor string
     numbers = tensor_str.strip("tensor([").rstrip("], dtype=torch.float64)")
     return np.fromstring(numbers, sep=',')
 
@@ -55,14 +53,13 @@ def linear_interpolation(discrete_values, difference_map, query_value):
     # Find the interval for interpolation
     for i in range(len(difference_map) - 1):
         if difference_map[i] <= query_value <= difference_map[i + 1] or difference_map[i] >= query_value >= difference_map[i + 1]:
-            # Linear interpolation formula
             return discrete_values[i] + (discrete_values[i + 1] - discrete_values[i]) * (query_value - difference_map[i]) / (difference_map[i + 1] - difference_map[i])
 
     raise ValueError("Query value is out of the bounds of the difference map")
 
 
 
-dataset_dir = "playroom_lod_pairs"
+dataset_dir = "example_lod_pairs_white_5_levels"
 lod_pairs_dataset = LODPairsFvvdp(dataset_dir)
 
 views = lod_pairs_dataset.get_unique_view_indices()
@@ -115,12 +112,10 @@ def save_combined_image(original_image, actual_image, heatmap, filename='combine
     axes[0].set_title('Colored LOD Output')
     axes[0].axis('off')
 
-    # Plot LOD output image
     axes[1].imshow(actual_image, interpolation='nearest')  
     axes[1].set_title('Actual Image')
     axes[1].axis('off')
 
-    # Plot heatmap
     axes[2].imshow(heatmap, interpolation='nearest')
     axes[2].set_title('Heatmap')
     axes[2].axis('off')
@@ -129,10 +124,10 @@ def save_combined_image(original_image, actual_image, heatmap, filename='combine
     plt.savefig(filename, bbox_inches='tight', pad_inches=0)
     plt.close()
 
-patch_sizes = 32
+patch_sizes = 64
 output_image = np.full((image_dim[0], image_dim[1]), np.nan)
 
-for view_idx in tqdm(views[0:3]):
+for view_idx in tqdm(views[0:1]):
     for y in range(0, image_dim[0], patch_sizes):  
         for x in range(0, image_dim[1], patch_sizes):
 
@@ -142,35 +137,29 @@ for view_idx in tqdm(views[0:3]):
             levels = lod_pairs_dataset.get_num_lod_levels()
             difference_map = []
 
-            for lod_x in range(levels):
-                pair = lod_pairs_dataset.get_by_view_index_and_lod_x(view_idx, lod_x)
+            for lod_x in reversed(range(levels)):
+                # print(lod_x)
+                pair = lod_pairs_dataset.get_by_image_name_and_lod_x(view_idx, lod_x)
+                # print(pair["camera_position"])
+                # print(pair["camera_R"])
                 
-                heatmap = pair['heatmap'][0, :, 0, :, :].permute([1, 2, 0]).to(torch.float32).numpy()
-                heatmap_patch = extract_heatmap_patch(heatmap, x, y, patch_sizes)  
+                heatmap = pair['heatmap'].squeeze().to(torch.float32).numpy()
+
+                x = min(max(x, 0), heatmap.shape[1] - patch_sizes)
+                y = min(max(y, 0), heatmap.shape[0] - patch_sizes)
+
+                heatmap_patch = heatmap[y:y + patch_sizes, x:x + patch_sizes]
 
                 heatmap_JOD_mean = np.mean(heatmap_patch)
 
                 if np.linalg.norm(heatmap_patch) == 0:
                     heatmap_JOD_mean = 0
+                if heatmap_JOD_mean <= JOD_THRESHOLD_DIFF:
+                    output_image[y:y + patch_sizes, x:x + patch_sizes] = lod_x
 
-                # difference_map.append(heatmap_JOD_mean)
-                
-                # # Check if JOD mean exceeds the threshold
-                # if heatmap_JOD_mean >= JOD_THRESHOLD_DIFF:
-                #     discrete_values = list(reversed(range(lod_x, levels)))
-                #     continuous_LOD_val = linear_interpolation(discrete_values, difference_map, JOD_THRESHOLD_DIFF)
-                    
-                #     # Save the continuous LOD value in the corresponding position in the output image
-                #     output_image[y:y+patch_sizes, x:x+patch_sizes] = continuous_LOD_val                    
-                #     # print(continuous_LOD_val)
-                #     lod_n_image = pair['lod_n_image']
-                #     break
-                
-                if heatmap_JOD_mean <= JOD_THRESHOLD_DIFF:                    
-                    output_image[y:y+patch_sizes, x:x+patch_sizes] = lod_x                    
-                    # print(continuous_LOD_val)
                     lod_n_image = pair['lod_n_image']
                     break
+
     
-    save_combined_image(output_image, np.array(pair['lod_x_image']), heatmap, f'lod_output_{view_idx}_32.png')
+    save_combined_image(output_image, np.array(pair['lod_x_image']), heatmap, f'lod_output_{view_idx}_64.png')
  
