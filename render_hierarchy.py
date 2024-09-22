@@ -74,6 +74,49 @@ def plot_gaussian_centers_2d(gaussians, camera, image_name="gaussian_centers.png
 
     plt.savefig(image_name)
 
+def plot_gaussian_size_heatmap(gaussians, camera, image_name):
+    # Extract Gaussian data
+    xyz = gaussians._xyz.cpu()
+    scaling = gaussians._scaling.cpu()
+
+    # Add a homogeneous coordinate for matrix multiplication
+    ones = torch.ones(xyz.shape[0], 1)
+    xyz_homogeneous = torch.cat([xyz, ones], dim=1)
+
+    # Apply the projection matrix
+    xyz_projected = torch.mm(xyz_homogeneous, camera.full_proj_transform.cpu())
+
+    # Convert from homogeneous coordinates to 2D and extract depth
+    w_coords = xyz_projected[:, 3:4]
+    xy_coords = xyz_projected[:, :2] / xyz_projected[:, 3:4]
+    depths = xyz_projected[:, 2] / xyz_projected[:, 3]
+
+    valid_mask = torch.isfinite(xy_coords).all(dim=1) & torch.isfinite(depths) & (w_coords[:, 0] != 0)
+
+
+    # Normalize screen coordinates to pixel values
+    xy_coords[:, 0] = (xy_coords[:, 0] + 1) * camera.image_width / 2.0
+    xy_coords[:, 1] = (xy_coords[:, 1] + 1) * camera.image_height / 2.0
+
+    # Initialize a 2D heatmap
+    heatmap = torch.zeros(camera.image_height, camera.image_width)
+
+    # Populate the heatmap with Gaussian sizes (normalized and scaled based on depth)
+    for i in range(xy_coords.shape[0]):
+        x, y = int(xy_coords[i, 0]), int(xy_coords[i, 1])
+        if 0 <= x < camera.image_width and 0 <= y < camera.image_height:
+            size = scaling[i, 0] / (1 + depths[i])  # Adjust size by depth
+            heatmap[y, x] += size  # Add size to the corresponding pixel
+
+    # Plotting the heatmap
+    fig, ax = plt.subplots(figsize=(10, 10))
+    im = ax.imshow(heatmap, cmap='plasma')
+    ax.set_title('Gaussian Size Heatmap')
+    plt.colorbar(im, ax=ax, label='Gaussian Size')
+
+    plt.tight_layout()
+    plt.savefig(image_name)
+
 
 import matplotlib.pyplot as plt
 import torch
@@ -120,10 +163,10 @@ def render_set(args, scene, pipe, taus, eval):
     lpipss = 0.0
 
     cameras = scene.getTestCameras() if eval else scene.getTrainCameras()
-    images = []
-    print(taus)
 
     for idx, viewpoint in enumerate(tqdm(cameras)):
+        
+        images = []
         viewpoint = viewpoint
         viewpoint.world_view_transform = viewpoint.world_view_transform.cuda()
         viewpoint.projection_matrix = viewpoint.projection_matrix.cuda()
@@ -143,11 +186,11 @@ def render_set(args, scene, pipe, taus, eval):
                                     [-0.04566442, -0.09994473,  0.99394457],
                                     [ 0.18807147, -0.97805008, -0.08970599]])
 
-        if not is_within_frustum(cam_position, cam_dir, cam_R, starting_pos, starting_dir, starting_R, max_angle_deg=20, 
-                                    max_distance=20, max_rotation_deg=20):
-            continue  
+        if not is_within_frustum(cam_position, cam_dir, cam_R, starting_pos, starting_dir, starting_R, max_angle_deg=40, 
+                                    max_distance=40, max_rotation_deg=40):
+            continue 
 
-        for tau in taus:            
+        for tau in range(taus[-1]):            
             tanfovx = math.tan(viewpoint.FoVx * 0.5)
             threshold = (2 * (tau + 0.5)) * tanfovx / (0.5 * viewpoint.image_width)
 
@@ -183,7 +226,7 @@ def render_set(args, scene, pipe, taus, eval):
                 viewpoint, 
                 scene.gaussians, 
                 pipe, 
-                black_tensor, 
+                white_tensor, 
                 render_indices=indices,
                 parent_indices=parent_indices,
                 interpolation_weights=interpolation_weights,
@@ -192,13 +235,11 @@ def render_set(args, scene, pipe, taus, eval):
                 view_num=idx
                 )["render"]
             
-            images.append(image)
+            
 
             gt_image = viewpoint.original_image.to("cuda")
 
             alpha_mask = viewpoint.alpha_mask.cuda()
-
-            # plot_rgb_heatmaps(image, gt_image, image_name="rgb_maps/" + viewpoint.image_name.split(".")[0] + ".png")
 
             if args.train_test_exp:
                 image = image[..., image.shape[-1] // 2:]
@@ -213,14 +254,18 @@ def render_set(args, scene, pipe, taus, eval):
                 os.makedirs(os.path.dirname(os.path.join(render_path, viewpoint.image_name.split(".")[0] + ".png")), exist_ok=True)
                 torchvision.utils.save_image(image, os.path.join(render_path, viewpoint.image_name.split(".")[0] + ".png"))
 
-            # plot_gaussian_centers_2d(scene.gaussians, viewpoint, image_name="gauss_sizes/" + viewpoint.image_name.split(".")[0] + ".png")
-            
-        compute_save_vdp_heatmap('example_lod_pairs', 
+            # plot_gaussian_centers_2d(scene.gaussians, viewpoint, image_name="gauss_points/" + viewpoint.image_name.split(".")[0] + ".png")
+            # plot_gaussian_size_heatmap(scene.gaussians, viewpoint, image_name="gauss_sizes/" + viewpoint.image_name.split(".")[0] + ".png")
+            images.append(image)
+
+        compute_save_vdp_heatmap('example_lod_pairs_white_dense', 
                                     viewpoint, 
                                     images, 
                                     viewpoint.image_name.replace("/", "_"), 
-                                    len(args.taus), 
+                                    args.taus, 
                                     pixels_per_deg=32)
+        
+        images = []
         
         if eval:
             image *= alpha_mask
@@ -244,7 +289,9 @@ if __name__ == "__main__":
     op = OptimizationParams(parser)
     pp = PipelineParams(parser)
     parser.add_argument('--out_dir', type=str, default="")
-    parser.add_argument("--taus", nargs="+", type=float, default=[0.0, 3.0, 6.0, 15.0])
+    # parser.add_argument("--taus", nargs="+", type=float, default=[0.0, 3.0, 6.0, 15.0])
+    parser.add_argument("--taus", nargs="+", type=float, default=[0.0, 10.0, 20.0, 30.0, 40.0])
+
     args = parser.parse_args(sys.argv[1:])
     
     print("Rendering " + args.model_path)
