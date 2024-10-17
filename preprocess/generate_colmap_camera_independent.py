@@ -89,56 +89,82 @@ if __name__ == '__main__':
         print(f"Error executing colmap feature_extractor: {e}")
         sys.exit(1)
 
-    print("making custom matches...")
-    make_colmap_custom_matcher_args = [
-        "python", f"preprocess/make_colmap_custom_matcher.py",
-        "--image_path", f"{args.images_dir}",
-        "--output_path", f"{args.project_dir}/camera_calibration/unrectified/matching.txt"
+    # print("making custom matches...")
+    # make_colmap_custom_matcher_args = [
+    #     "python", f"preprocess/make_colmap_custom_matcher.py",
+    #     "--image_path", f"{args.images_dir}",
+    #     "--output_path", f"{args.project_dir}/camera_calibration/unrectified/matching.txt"
+    # ]
+    # try:
+    #     subprocess.run(make_colmap_custom_matcher_args, check=True)
+    # except subprocess.CalledProcessError as e:
+    #     print(f"Error executing make_colmap_custom_matcher: {e}")
+    #     sys.exit(1)
+
+    print("making exhaustive matches...")
+    make_colmap_exhaustive_matcher_args = [
+        colmap_exe, "exhaustive_matcher",
+        "--database_path", f"{args.project_dir}/camera_calibration/unrectified/database.db",
+        # "--image_path", f"{args.images_dir}",
+        # "--output_path", f"{args.project_dir}/camera_calibration/unrectified/matching.txt"
     ]
     try:
-        subprocess.run(make_colmap_custom_matcher_args, check=True)
+        subprocess.run(make_colmap_exhaustive_matcher_args, check=True)
     except subprocess.CalledProcessError as e:
-        print(f"Error executing make_colmap_custom_matcher: {e}")
+        print(f"Error executing make_colmap_exhaustive_matcher: {e}")
         sys.exit(1)
 
-    ## Feature matching
-    print("matching features...")
-    colmap_matches_importer_args = [
-        colmap_exe, "matches_importer",
-        "--database_path", f"{args.project_dir}/camera_calibration/unrectified/database.db",
-        "--match_list_path", f"{args.project_dir}/camera_calibration/unrectified/matching.txt"
-        ]
-    try:
-        subprocess.run(colmap_matches_importer_args, check=True)
-    except subprocess.CalledProcessError as e:
-        print(f"Error executing colmap matches_importer: {e}")
-        sys.exit(1)
+
+    # ## Feature matching
+    # print("matching features...")
+    # colmap_matches_importer_args = [
+    #     colmap_exe, "matches_importer",
+    #     "--database_path", f"{args.project_dir}/camera_calibration/unrectified/database.db",
+    #     "--match_list_path", f"{args.project_dir}/camera_calibration/unrectified/matching.txt"
+    #     ]
+    # try:
+    #     subprocess.run(colmap_matches_importer_args, check=True)
+    # except subprocess.CalledProcessError as e:
+    #     print(f"Error executing colmap matches_importer: {e}")
+    #     sys.exit(1)
 
     ## Generate sfm pointcloud
     print("generating sfm point cloud...")
-    colmap_hierarchical_mapper_args = [
-        colmap_exe, "hierarchical_mapper",
+    # colmap_hierarchical_mapper_args = [
+    #     colmap_exe, "hierarchical_mapper",
+    #     "--database_path", f"{args.project_dir}/camera_calibration/unrectified/database.db",
+    #     "--image_path", f"{args.images_dir}",
+    #     "--output_path", f"{args.project_dir}/camera_calibration/unrectified/sparse",
+    #     "--Mapper.ba_global_function_tolerance", "0.000001" 
+    #     ]
+    # try:
+    #     subprocess.run(colmap_hierarchical_mapper_args, check=True)
+    # except subprocess.CalledProcessError as e:
+    #     print(f"Error executing colmap hierarchical_mapper: {e}")
+    #     sys.exit(1)
+    colmap_mapper_args = [
+        colmap_exe, "mapper",
         "--database_path", f"{args.project_dir}/camera_calibration/unrectified/database.db",
         "--image_path", f"{args.images_dir}",
         "--output_path", f"{args.project_dir}/camera_calibration/unrectified/sparse",
         "--Mapper.ba_global_function_tolerance", "0.000001" 
         ]
     try:
-        subprocess.run(colmap_hierarchical_mapper_args, check=True)
+        subprocess.run(colmap_mapper_args, check=True)
     except subprocess.CalledProcessError as e:
-        print(f"Error executing colmap hierarchical_mapper: {e}")
+        print(f"Error executing colmap mapper: {e}")
         sys.exit(1)
 
     ## Simplify images so that everything takes less time (reading colmap usually takes forever)
-    simplify_images_args = [
-        "python", f"preprocess/simplify_images.py",
-        "--base_dir", f"{args.project_dir}/camera_calibration/unrectified/sparse/0"
-    ]
-    try:
-        subprocess.run(simplify_images_args, check=True)
-    except subprocess.CalledProcessError as e:
-        print(f"Error executing simplify_images: {e}")
-        sys.exit(1)
+    # simplify_images_args = [
+    #     "python", f"preprocess/simplify_images.py",
+    #     "--base_dir", f"{args.project_dir}/camera_calibration/unrectified/sparse/0"
+    # ]
+    # try:
+    #     subprocess.run(simplify_images_args, check=True)
+    # except subprocess.CalledProcessError as e:
+    #     print(f"Error executing simplify_images: {e}")
+    #     sys.exit(1)
 
     ## Undistort images
     print(f"undistorting images from {args.images_dir} to {args.project_dir}/camera_calibration/rectified images...")

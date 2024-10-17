@@ -73,6 +73,7 @@ if __name__ == '__main__':
             "--base_dir", os.path.join(colmap_dir, "sparse", "0"),
             "--images_dir", f"{images_dir}",
             "--output_path", f"{chunks_dir}/raw_chunks",
+            "--min_n_cams", "10"
         ]
     try:
         subprocess.run(make_chunk_args, check=True)

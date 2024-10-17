@@ -97,15 +97,6 @@ class Camera(nn.Module):
         self.full_proj_transform = (self.world_view_transform.unsqueeze(0).bmm(self.projection_matrix.unsqueeze(0))).squeeze(0).to(self.data_device)
         self.camera_center = self.world_view_transform.inverse()[3, :3].to(self.data_device)
 
-    def get_camera_position(self):
-        R_transpose = np.transpose(self.R)  
-        camera_position = -np.matmul(R_transpose, self.T)
-        return torch.from_numpy(camera_position)
-    
-    def get_camera_facing_direction(self):
-        facing_direction = self.R[:, 2]  
-        return torch.from_numpy(facing_direction)
-
 class MiniCam:
     def __init__(self, width, height, fovy, fovx, znear, zfar, world_view_transform, full_proj_transform):
         self.image_width = width

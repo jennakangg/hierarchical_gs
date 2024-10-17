@@ -42,8 +42,6 @@ cd hierarchical-3d-gaussians
 ```
 ### Prerequisite
 
-**IMPORTANT**: There seem to be unspecified PyTorch/CUB compatibility issues on Ubuntu, we are investigating. In the meantime, if you can, combining PyTorch built for CUDA 12.1 with a CUDA Toolkit 12.5 installation (yes, this should be fine, minor version mismatches are allowed) seems like a good choice on Ubuntu, according to our Docker experiments. [This post](https://github.com/graphdeco-inria/hierarchical-3d-gaussians/issues/1#issuecomment-2244471550) provides a preliminary Ubuntu Docker file for a container that appears to be stable.
-
 We tested on Ubuntu 22.04 and Windows 11 using the following: 
 
 * CMake 3.22.1
@@ -519,10 +517,10 @@ Now we will generate a hierarchy in each chunk:
 Now we will consolidate and merge all the chunk hierarchies:
     ```
     # Linux:
-    submodules/gaussianhierarchy/build/GaussianHierarchyMerger [path to output/trained_chunks] "0" [path to chunk colmap] [list of all the chunk names] 
+    submodules/gaussianhierarchy/build/GaussianHierarchyMerger [path to output/trained_chunks] "0" [path to chunk colmap] [path to output merged.hier] [list of all the chunk names] 
     
     # Windows:
-    submodules/gaussianhierarchy/build/Release/GaussianHierarchyMerger.exe [path to output/trained_chunks] "0" [path to chunk colmap] [list of all the chunk names] 
+    submodules/gaussianhierarchy/build/Release/GaussianHierarchyMerger.exe [path to output/trained_chunks] "0" [path to chunk colmap] [path to output merged.hier] [list of all the chunk names] 
     ```
 
 ## Slurm parameters

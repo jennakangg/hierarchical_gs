@@ -326,7 +326,6 @@ class GaussianModel:
     def create_from_hier(self, path, spatial_lr_scale : float, scaffold_file : str):
         self.spatial_lr_scale = spatial_lr_scale
 
-        print(path)
         xyz, shs_all, alpha, scales, rots, nodes, boxes = load_hierarchy(path)
 
         base = os.path.dirname(path)
